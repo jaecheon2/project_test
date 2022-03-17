@@ -1,0 +1,155 @@
+<sc-link rel="import" href="es-po-list.html"></sc-link>
+<sc-link rel="import" href="es-po-detail.html"></sc-link>
+<sc-link rel="import" href="es-po-detail-out.html"></sc-link>
+<sc-link rel="import" href="es-po-detail-mod.html"></sc-link>
+<sc-link rel="import" href="es-stage-pay-eval-detail.html"></sc-link>
+<sc-link rel="import" href="../../edoc/contract/cntrstatus/es-cntrmanager.html"></sc-link>
+
+<dom-module id="em-po">
+<!-- 
+/**
+ *
+ *	@description : 계약및발주현황
+ *  <pre>
+ * </pre>
+ * @author : Yeon-u Kim
+ * @FileName : 
+ * @Since 2016. 12. 26. reNew 9.1ver
+ */
+-->
+    <style>
+        :host {
+            @apply(--fit-layout);
+        }
+    </style>
+
+    <template>
+    	<sc-ajax id="findPo" url="findPo.do"></sc-ajax>
+    	
+        <sc-pages id="pages" selected="0" class="fit">
+            <es-po-list id="list" on-selected-po="onSelectedPo" on-create-po="onShowDetail" on-change-po="onChangePo"
+            on-selected-contract="onSelectedContract" on-selected-cancel-contract="onSelectedCancelContract" 
+            > </es-po-list>
+            <template>
+            	<es-po-detail id="detail" on-close="onShowList" on-modify-po="onShowModDetail"  ></es-po-detail>
+            </template>
+            <template>
+            	<es-po-detail-out id="detail_out" on-close="onShowList" on-modify-po="onShowModDetail"  ></es-po-detail-out>
+            </template> 
+            <template>
+                <es-cntrmanager id="contract" on-close-remove="onShowList"></es-cntrmanager>
+            </template>
+        </sc-pages>
+        
+    </template>
+    
+    <script>
+        Polymer({
+            is: "em-po",
+
+            initialized: function(e) {
+            	var me = this;
+                
+                // 타 모듈에서 mdi.createWindow 를 통해 화면 open 하는 경우
+                var param = me.params;
+                
+                if(param.app_id) {					// mdi 를 통해 app_id 값이 넘어오는 경우
+                	
+                	me.$.findPo.body = {po_id : param.app_id};
+                
+                	UT.request(me.$.findPo, function(e, res) {
+                		var result = res.response;
+                		
+                		// 상세화면 조회
+                		result.approval_popup_yn = "Y";
+                        me.onSelectedPo(e, result);
+                	});
+                
+                } else if(param.po_prog_sts) {		// po_prog_sts 값이 넘어오는 경우
+                	// 목록화면 조회
+                	me.$.list.load(param);
+                }
+            },
+            
+            // PO가 선택됨
+            onSelectedPo: function(e, data) {
+            	var me = this;
+            	
+            	var poRev     = UT.toNumber(data.po_rev);	// 차수
+                var poProgSts = data.po_prog_sts;			// 발주진행상태 - S: 대기중, T: 임시저장, P: 발주진행중, C: 발주승인완료, R: 변경요청, M: 발주변경, B: 변경반송, D: 발주해지 
+                var modTyp    = data.mod_typ;				// 변경유형 - N: 신규, C: 변경, R: 해지
+                var poCompYn  = data.po_comp_yn;			// 발주종료여부
+                 
+               	// 발주 상세
+               	me.onShowDetail(null, data); 
+            },
+            
+            // 발주 상세 보기
+            onShowDetail: function(e, data) {
+            	var me = this;
+            	if(data.shipper_type === "D"){
+	            	me.$.pages.selectItem(me.$.detail);
+	                me.$.detail.load(data);
+                }else{
+	            	me.$.pages.selectItem(me.$.detail_out);
+	                me.$.detail_out.load(data);
+                }
+            },
+            
+            // 발주변경 상세 보기
+            onShowModDetail: function(e, data) {
+            	var me = this;
+            	me.$.pages.selectItem(me.$.modDetail);
+                me.$.modDetail.load(data);
+            },
+
+            //검수평가 항목 설정
+            onShowStagePayEvalDetail: function(e, data) {
+                var me = this;
+                me.$.pages.selectItem(me.$.stagePayEvalDetail);
+                me.$.stagePayEvalDetail.load(data);
+            },
+            
+            // 목록 보기
+            onShowList: function(e, data) {
+                var me = this;
+                me.$.pages.selectItem(me.$.list);
+                me.$.list.load();
+            },
+
+            // 계약서 보기
+            onSelectedContract: function(e, data) {
+            	var me = this;
+            	me.$.pages.selectItem(me.$.contract);
+            	var param = {cntr_id : data.e_cntr_id};
+            	param.vd_cd = data.vd_cd;
+            	param.random_value = data.e_cntr_id;
+                me.$.contract.load(param);
+            },
+            // 해지 계약서 보기
+            onSelectedCancelContract: function(e, data) {
+            	var me = this;
+            	me.$.pages.selectItem(me.$.contract);
+            	var param = {cntr_id : data.e_cancel_cntr_id};
+            	param.vd_cd = data.vd_cd;
+            	param.random_value = data.e_cancel_cntr_id;
+                me.$.contract.load(param);
+            },
+
+            onChangePo: function(e,data){ 
+            	var me = this;
+            	data.change_yn = "Y"; 
+                if(data.shipper_type === "D"){
+	            	me.$.pages.selectItem(me.$.detail);
+	                me.$.detail.load(data);
+                }else{
+	            	me.$.pages.selectItem(me.$.detail_out);
+	                me.$.detail_out.load(data);
+                }
+            }
+
+
+        });
+    </script>
+
+</dom-module>
